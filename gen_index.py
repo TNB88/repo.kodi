@@ -1,114 +1,107 @@
 import os
 import datetime
-import math
 
-# Cấu hình tiêu đề trang web
-PAGE_TITLE = "Index of /KODI/F/"
+# --- CẤU HÌNH ---
+EXCLUDED_DIRS = {'.git', '.github', '.idea', '__pycache__'}
+EXCLUDED_FILES = {'index.html', 'gen_index.py', 'chay-cai-nay.bat', '.gitignore', '.DS_Store', 'README.md'}
 
 def get_size_format(b, factor=1024, suffix="B"):
-    """Chuyển đổi byte sang KB, MB, GB"""
-    for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
-        if b < factor:
-            return f"{b:.2f} {unit}{suffix}"
+    for unit in ["", "K", "M", "G", "T", "P"]:
+        if b < factor: return f"{b:.2f} {unit}{suffix}"
         b /= factor
     return f"{b:.2f} Y{suffix}"
 
-def get_icon(filename):
-    """Chọn icon dựa trên đuôi file"""
-    ext = filename.split('.')[-1].lower()
-    if ext in ['zip', 'rar', '7z']:
-        return "📦" # Icon hộp
-    elif ext in ['apk']:
-        return "🤖" # Icon Android
-    elif ext in ['jpg', 'png', 'jpeg', 'gif']:
-        return "🖼️" # Icon ảnh
-    elif ext in ['txt', 'xml', 'json']:
-        return "📝" # Icon văn bản
-    else:
-        return "📄" # Icon file chung
+def get_icon(name, is_dir=False):
+    if is_dir: return "📁"
+    ext = name.split('.')[-1].lower()
+    if ext in ['zip', 'rar', '7z']: return "📦"
+    if ext in ['apk']: return "🤖"
+    if ext in ['jpg', 'png']: return "🖼️"
+    return "📄"
 
-def generate_index():
-    files = [f for f in os.listdir('.') if os.path.isfile(f)]
-    
-    # Các file muốn bỏ qua, không hiện lên web
-    ignore_files = ['index.html', 'gen_index.py', '.gitignore', '.DS_Store']
-    
-    html_content = f"""<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{PAGE_TITLE}</title>
-    <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; color: #333; }}
-        .container {{ max-width: 900px; margin: 0 auto; background: white; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 8px; }}
-        h1 {{ font-size: 24px; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }}
-        table {{ width: 100%; border-collapse: collapse; }}
-        th, td {{ text-align: left; padding: 12px; border-bottom: 1px solid #eee; }}
-        th {{ background-color: #f8f9fa; font-weight: 600; color: #555; }}
-        tr:hover {{ background-color: #f1f1f1; }}
-        a {{ text-decoration: none; color: #0366d6; font-weight: 500; display: flex; align-items: center; }}
-        a:hover {{ text-decoration: underline; }}
-        .icon {{ margin-right: 10px; min-width: 25px; text-align: center; }}
-        .size {{ color: #666; font-size: 0.9em; font-family: monospace; }}
-        .date {{ color: #888; font-size: 0.9em; }}
-        .footer {{ margin-top: 20px; font-size: 12px; color: #999; text-align: center; }}
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>{PAGE_TITLE}</h1>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 55%">Name</th>
-                <th style="width: 30%">Last Modified</th>
-                <th style="width: 15%">Size</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><a href="../"><span class="icon">📂</span> [Parent Directory]</a></td>
-                <td>-</td>
-                <td>-</td>
-            </tr>
-    """
+def generate_html_for_dir(path):
+    try:
+        # Lấy danh sách file và thư mục
+        items = os.listdir(path)
+        dirs = []
+        files = []
 
-    # Sắp xếp file theo tên
-    files.sort()
-
-    for filename in files:
-        if filename in ignore_files or filename.startswith('.'):
-            continue
+        for item in items:
+            full_path = os.path.join(path, item)
+            if item in EXCLUDED_FILES or item in EXCLUDED_DIRS: continue
             
-        # Lấy thông tin file
-        filepath = os.path.join('.', filename)
-        size = get_size_format(os.path.getsize(filepath))
-        mtime = os.path.getmtime(filepath)
-        date_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
-        icon = get_icon(filename)
+            if os.path.isdir(full_path):
+                dirs.append(item)
+            else:
+                files.append(item)
+        
+        dirs.sort()
+        files.sort()
 
-        html_content += f"""
-            <tr>
-                <td><a href="{filename}"><span class="icon">{icon}</span> {filename}</a></td>
-                <td class="date">{date_str}</td>
-                <td class="size">{size}</td>
-            </tr>
+        # Nội dung HTML
+        html = f"""
+        <!DOCTYPE html>
+        <html lang="vi">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Index of {path}</title>
+            <style>
+                body {{ font-family: sans-serif; background: #f4f4f4; padding: 20px; }}
+                .container {{ max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
+                h2 {{ border-bottom: 1px solid #eee; padding-bottom: 10px; }}
+                table {{ width: 100%; border-collapse: collapse; }}
+                td, th {{ padding: 10px; border-bottom: 1px solid #eee; text-align: left; }}
+                a {{ text-decoration: none; color: #0366d6; display: block; }}
+                a:hover {{ text-decoration: underline; }}
+                .icon {{ margin-right: 8px; }}
+                .size {{ font-family: monospace; color: #666; }}
+            </style>
+        </head>
+        <body>
+        <div class="container">
+            <h2>Index of /{path.replace(os.sep, '/')}</h2>
+            <table>
+                <thead><tr><th>Name</th><th width="20%">Size</th></tr></thead>
+                <tbody>
         """
 
-    html_content += """
-        </tbody>
-    </table>
-    <div class="footer">Generated automatically by Python</div>
-</div>
-</body>
-</html>
-    """
+        # Link quay lại (nếu không phải thư mục gốc)
+        if path != '.':
+            html += '<tr><td><a href="../"><span class="icon">🔙</span> [Parent Directory]</a></td><td>-</td></tr>'
 
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
+        # Liệt kê Thư mục trước
+        for d in dirs:
+            html += f'<tr><td><a href="{d}/"><span class="icon">📁</span> <b>{d}</b></a></td><td>-</td></tr>'
+
+        # Liệt kê File sau
+        for f in files:
+            file_path = os.path.join(path, f)
+            size = get_size_format(os.path.getsize(file_path))
+            html += f'<tr><td><a href="{f}"><span class="icon">{get_icon(f)}</span> {f}</a></td><td class="size">{size}</td></tr>'
+
+        html += """
+                </tbody>
+            </table>
+            <div style="margin-top:20px;text-align:center;color:#999;font-size:12px">Auto-generated by Python</div>
+        </div>
+        </body>
+        </html>
+        """
+
+        # Ghi file index.html vào đúng thư mục đó
+        with open(os.path.join(path, "index.html"), "w", encoding="utf-8") as f:
+            f.write(html)
+            
+    except Exception as e:
+        print(f"Lỗi tại {path}: {e}")
+
+# --- CHẠY QUÉT ---
+print("dang quet thu muc...")
+for root, dirs, files in os.walk('.', topdown=True):
+    # Loại bỏ các thư mục hệ thống
+    dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
     
-    print("✅ Đã tạo file index.html thành công!")
+    generate_html_for_dir(root)
 
-if __name__ == "__main__":
-    generate_index()
+print("✅ ĐÃ XONG! Đã tạo index.html cho tất cả thư mục con.")
